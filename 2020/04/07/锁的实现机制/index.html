@@ -34,16 +34,15 @@
     <ul>
       <li><a href="/">peacemaple</a></li>
       <li><a href="/archives">Archives</a></li>
-      <li><a href="/about">About</a></li>
     </ul>
 </nav>
 
             <article>
   <h1>锁的实现机制</h1>
   <div class="contents">
-    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#锁的实现机制"><span class="toc-text">锁的实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#控制中断"><span class="toc-text">控制中断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#简单标志位"><span class="toc-text">简单标志位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#测试并设置（test-and-set）"><span class="toc-text">测试并设置（test-and-set）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#比较并交换（compare-and-swap）"><span class="toc-text">比较并交换（compare-and-swap）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#链接的加载和条件式存储（load-link-and-store-conditional）"><span class="toc-text">链接的加载和条件式存储（load-link and store-conditional）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-获取并增加（fetch-and-add）"><span class="toc-text">6.获取并增加（fetch-and-add）</span></a></li></ol></li></ol></li></ol>
+    <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#控制中断"><span class="toc-text">控制中断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#简单标志位"><span class="toc-text">简单标志位</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#测试并设置（test-and-set）"><span class="toc-text">测试并设置（test-and-set）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#比较并交换（compare-and-swap）"><span class="toc-text">比较并交换（compare-and-swap）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#链接的加载和条件式存储（load-link-and-store-conditional）"><span class="toc-text">链接的加载和条件式存储（load-link and store-conditional）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-获取并增加（fetch-and-add）"><span class="toc-text">6.获取并增加（fetch-and-add）</span></a></li></ol>
   </div>
-  <h1 id="锁的实现机制"><a href="#锁的实现机制" class="headerlink" title="锁的实现机制"></a>锁的实现机制</h1><p>锁是并发实现的必要机制，计算机体系结构的指令集内有不同的硬件原语，可以实现锁机制。评价锁实现的效果有三个标准：</p>
+  <p>锁是并发实现的必要机制，计算机体系结构的指令集内有不同的硬件原语，可以实现锁机制。评价锁实现的效果有三个标准：</p>
 <ul>
 <li>互斥实现：锁的基本任务就是实现临界区的互斥访问</li>
 <li>公平性：保证每一个线程都能够有机会抢到锁</li>
