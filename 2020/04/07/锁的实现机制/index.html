@@ -59,20 +59,97 @@
 <li>当已有线程A占用临界区时，另一个线程B调用lock，在while中自旋，直到线程A结束占用unlock清空标志位，线程B退出while设置标志位为1，开始访问临界区代码。</li>
 <li>while循环空转被称为自旋锁（spin lock），自旋锁在单cpu中无法使用，自旋锁永远不会放弃cpu。自旋锁无法保证公平性，会导致线程饿死。自旋锁的性能开销很大。</li>
 </ul>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">lock_t</span> &#123;</span> <span class="keyword">int</span> flag; &#125; <span class="keyword">lock_t</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">init</span><span class="params">(<span class="keyword">lock_t</span> *mutex)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 0 -&gt; lock is available, 1 -&gt; held</span></span><br><span class="line">	mutex-&gt;flag = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">(<span class="keyword">lock_t</span> *mutex)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">while</span> (mutex-&gt;flag == <span class="number">1</span>) <span class="comment">// TEST the flag</span></span><br><span class="line">		; <span class="comment">// spin-wait (do nothing)</span></span><br><span class="line">	mutex-&gt;flag = <span class="number">1</span>; <span class="comment">// now SET it!</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">(<span class="keyword">lock_t</span> *mutex)</span> </span>&#123;</span><br><span class="line">	mutex-&gt;flag = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<pre><code class="c">typedef struct lock_t { int flag; } lock_t;
+void init(lock_t *mutex) {
+    // 0 -&gt; lock is available, 1 -&gt; held
+    mutex-&gt;flag = 0;
+}
 
-<h3 id="测试并设置（test-and-set）"><a href="#测试并设置（test-and-set）" class="headerlink" title="测试并设置（test-and-set）"></a>测试并设置（test-and-set）</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">TestAndSet</span><span class="params">(<span class="keyword">int</span> *ptr, <span class="keyword">int</span> <span class="keyword">new</span>)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> old = *ptr; <span class="comment">// fetch old value at ptr</span></span><br><span class="line">	*ptr = <span class="keyword">new</span>; <span class="comment">// store ’new’ into ptr</span></span><br><span class="line">	<span class="keyword">return</span> old; <span class="comment">// return the old value</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> __<span class="title">lock_t</span> &#123;</span></span><br><span class="line">	<span class="keyword">int</span> flag;</span><br><span class="line">&#125; <span class="keyword">lock_t</span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">init</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 0 indicates that lock is available, 1 that it is held</span></span><br><span class="line">	lock-&gt;flag = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">while</span> (TestAndSet(&amp;lock-&gt;flag, <span class="number">1</span>) == <span class="number">1</span>)</span><br><span class="line">	; <span class="comment">// spin-wait (do nothing)</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	lock-&gt;flag = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+void lock(lock_t *mutex) {
+    while (mutex-&gt;flag == 1) // TEST the flag
+        ; // spin-wait (do nothing)
+    mutex-&gt;flag = 1; // now SET it!
+}
+void unlock(lock_t *mutex) {
+    mutex-&gt;flag = 0;
+}</code></pre>
+<h3 id="测试并设置（test-and-set）"><a href="#测试并设置（test-and-set）" class="headerlink" title="测试并设置（test-and-set）"></a>测试并设置（test-and-set）</h3><pre><code class="c">int TestAndSet(int *ptr, int new) {
+    int old = *ptr; // fetch old value at ptr
+    *ptr = new; // store ’new’ into ptr
+    return old; // return the old value
+}</code></pre>
+<pre><code class="c">typedef struct __lock_t {
+    int flag;
+} lock_t;
+
+void init(lock_t *lock) {
+    // 0 indicates that lock is available, 1 that it is held
+    lock-&gt;flag = 0;
+}
+
+void lock(lock_t *lock) {
+    while (TestAndSet(&amp;lock-&gt;flag, 1) == 1)
+    ; // spin-wait (do nothing)
+}
+
+void unlock(lock_t *lock) {
+    lock-&gt;flag = 0;
+}</code></pre>
 <h3 id="比较并交换（compare-and-swap）"><a href="#比较并交换（compare-and-swap）" class="headerlink" title="比较并交换（compare-and-swap）"></a>比较并交换（compare-and-swap）</h3><ul>
 <li>sparc和x86系统上提供了这一指令</li>
-<li>实际上和test-and-set的思路一致<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//比较并交换指令的一般形式</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">CompareAndSwap</span><span class="params">(<span class="keyword">int</span> *ptr, <span class="keyword">int</span> expected, <span class="keyword">int</span> <span class="keyword">new</span>)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> actual = *ptr;</span><br><span class="line">	<span class="keyword">if</span> (actual == expected)</span><br><span class="line">		*ptr = <span class="keyword">new</span>;</span><br><span class="line">	<span class="keyword">return</span> actual;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-只需要用下列code替代lock函数即可<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">while</span> (CompareAndSwap(&amp;lock-&gt;flag, <span class="number">0</span>, <span class="number">1</span>) == <span class="number">1</span>)</span><br><span class="line">		; <span class="comment">// spin</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<li>实际上和test-and-set的思路一致<pre><code class="c">//比较并交换指令的一般形式
+int CompareAndSwap(int *ptr, int expected, int new) {
+  int actual = *ptr;
+  if (actual == expected)
+      *ptr = new;
+  return actual;
+}</code></pre>
+只需要用下列code替代lock函数即可<pre><code class="c">void lock(lock_t *lock) {
+  while (CompareAndSwap(&amp;lock-&gt;flag, 0, 1) == 1)
+      ; // spin
+}</code></pre>
 <h3 id="链接的加载和条件式存储（load-link-and-store-conditional）"><a href="#链接的加载和条件式存储（load-link-and-store-conditional）" class="headerlink" title="链接的加载和条件式存储（load-link and store-conditional）"></a>链接的加载和条件式存储（load-link and store-conditional）</h3></li>
-<li>在MIPS架构中，链接的加载和条件式存储可以配合使用<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">LoadLinked</span><span class="params">(<span class="keyword">int</span> *ptr)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">return</span> *ptr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">StoreConditional</span><span class="params">(<span class="keyword">int</span> *ptr, <span class="keyword">int</span> value)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (no one has updated *ptr since the LoadLinked to <span class="keyword">this</span> address) &#123;</span><br><span class="line">	*ptr = value;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">1</span>; <span class="comment">// success!</span></span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>; <span class="comment">// failed to update</span></span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">while</span> (<span class="number">1</span>) &#123;</span><br><span class="line">		<span class="keyword">while</span> (LoadLinked(&amp;lock-&gt;flag) == <span class="number">1</span>)</span><br><span class="line">			; <span class="comment">// spin until it’s zero</span></span><br><span class="line">		<span class="keyword">if</span> (StoreConditional(&amp;lock-&gt;flag, <span class="number">1</span>) == <span class="number">1</span>)</span><br><span class="line">			<span class="keyword">return</span>; <span class="comment">// if set-it-to-1 was a success: all done</span></span><br><span class="line">				<span class="comment">// otherwise: try it all over again</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	lock-&gt;flag = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="6-获取并增加（fetch-and-add）"><a href="#6-获取并增加（fetch-and-add）" class="headerlink" title="6.获取并增加（fetch-and-add）"></a>6.获取并增加（fetch-and-add）</h3></li>
-<li>不同与之前的方法，能保证所有线程都能抢到锁（标志位不断增加）<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">FetchAndAdd</span><span class="params">(<span class="keyword">int</span> *ptr)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> old = *ptr;</span><br><span class="line">	*ptr = old + <span class="number">1</span>;</span><br><span class="line">	<span class="keyword">return</span> old;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> __<span class="title">lock_t</span> &#123;</span></span><br><span class="line">	<span class="keyword">int</span> ticket;</span><br><span class="line">	<span class="keyword">int</span> <span class="built_in">turn</span>;</span><br><span class="line">&#125; <span class="keyword">lock_t</span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock_init</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	lock-&gt;ticket = <span class="number">0</span>;</span><br><span class="line">	lock-&gt;<span class="built_in">turn</span> = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> myturn = FetchAndAdd(&amp;lock-&gt;ticket);</span><br><span class="line">	<span class="keyword">while</span> (lock-&gt;<span class="built_in">turn</span> != myturn)</span><br><span class="line">		; <span class="comment">// spin</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">unlock</span><span class="params">(<span class="keyword">lock_t</span> *lock)</span> </span>&#123;</span><br><span class="line">	FetchAndAdd(&amp;lock-&gt;<span class="built_in">turn</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<li>在MIPS架构中，链接的加载和条件式存储可以配合使用<pre><code class="c">int LoadLinked(int *ptr) {
+  return *ptr;
+}
+</code></pre>
+</li>
+</ul>
+<p>int StoreConditional(int *ptr, int value) {<br>    if (no one has updated *ptr since the LoadLinked to this address) {<br>    *ptr = value;<br>    return 1; // success!<br>} else {<br>    return 0; // failed to update<br>}<br>}</p>
+<pre><code>```c
+void lock(lock_t *lock) {
+    while (1) {
+        while (LoadLinked(&amp;lock-&gt;flag) == 1)
+            ; // spin until it’s zero
+        if (StoreConditional(&amp;lock-&gt;flag, 1) == 1)
+            return; // if set-it-to-1 was a success: all done
+                // otherwise: try it all over again
+    }
+}
+void unlock(lock_t *lock) {
+    lock-&gt;flag = 0;
+}</code></pre><h3 id="6-获取并增加（fetch-and-add）"><a href="#6-获取并增加（fetch-and-add）" class="headerlink" title="6.获取并增加（fetch-and-add）"></a>6.获取并增加（fetch-and-add）</h3><ul>
+<li>不同与之前的方法，能保证所有线程都能抢到锁（标志位不断增加）<pre><code class="c">int FetchAndAdd(int *ptr) {
+  int old = *ptr;
+  *ptr = old + 1;
+  return old;
+}</code></pre>
+<pre><code class="c">typedef struct __lock_t {
+  int ticket;
+  int turn;
+} lock_t;
+void lock_init(lock_t *lock) {
+  lock-&gt;ticket = 0;
+  lock-&gt;turn = 0;
+}
+void lock(lock_t *lock) {
+  int myturn = FetchAndAdd(&amp;lock-&gt;ticket);
+  while (lock-&gt;turn != myturn)
+      ; // spin
+}
+void unlock(lock_t *lock) {
+  FetchAndAdd(&amp;lock-&gt;turn);
+}</code></pre>
 必须显示提供某种控制机制，决定释放锁，以及那个线程能够抢到锁<br>使用队列放置不能获取锁的线程，并让出cpu</li>
 </ul>
 
